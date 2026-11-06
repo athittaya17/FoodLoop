@@ -1,0 +1,91 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "admins": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": false
+      }
+    },
+
+    "users": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$uid": {
+        ".validate": "newData.hasChildren(['name', 'role', 'email'])",
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (auth.uid == $uid && (data.exists() ? (newData.child('role').val() == data.child('role').val() && newData.child('shopId').val() == data.child('shopId').val() && newData.child('suspended').val() == data.child('suspended').val()) : ((newData.child('role').val() == 'customer' && !newData.child('shopId').exists()) || (newData.child('role').val() == 'shop' && newData.child('shopId').isString() && !root.child('shops').child(newData.child('shopId').val()).exists())))))"
+      }
+    },
+
+    "shops": {
+      ".read": "auth != null",
+      "$id": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (!data.exists() && newData.child('status').val() == 'pending') || (root.child('users').child(auth.uid).child('shopId').val() == $id && newData.child('status').val() == data.child('status').val()))"
+      }
+    },
+
+    "products": {
+      ".read": "auth != null",
+      ".indexOn": ["shopId"],
+      "$id": {
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (root.child('users').child(auth.uid).child('shopId').val() != null && root.child('users').child(auth.uid).child('shopId').val() == (newData.exists() ? newData.child('shopId').val() : data.child('shopId').val())))",
+        "qty": {
+          ".write": "auth != null && data.parent().exists()",
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "sold": {
+          ".write": "auth != null && data.parent().exists()",
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        }
+      }
+    },
+
+    "orders": {
+      ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || (query.orderByChild == 'userId' && query.equalTo == auth.uid) || (query.orderByChild == 'shopId' && query.equalTo == root.child('users').child(auth.uid).child('shopId').val()))",
+      ".indexOn": ["userId", "shopId"],
+      "$id": {
+        ".read": "auth != null && (data.child('userId').val() == auth.uid || (root.child('users').child(auth.uid).child('shopId').val() != null && data.child('shopId').val() == root.child('users').child(auth.uid).child('shopId').val()))",
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (!data.exists() && newData.child('userId').val() == auth.uid && root.child('users').child(auth.uid).child('suspended').val() != true) || (data.exists() && data.child('userId').val() == auth.uid && (newData.child('status').val() == 'cancelled' || newData.child('status').val() == data.child('status').val())) || (data.exists() && root.child('users').child(auth.uid).child('shopId').val() != null && data.child('shopId').val() == root.child('users').child(auth.uid).child('shopId').val()))"
+      }
+    },
+
+    "reports": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "$id": {
+        ".read": "auth != null && data.child('userId').val() == auth.uid",
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || (!data.exists() && newData.child('userId').val() == auth.uid))"
+      }
+    },
+
+    "notifs": {
+      ".read": "auth != null && (root.child('admins').child(auth.uid).val() === true || (query.orderByChild == 'to' && (query.equalTo == auth.uid || query.equalTo == root.child('users').child(auth.uid).child('shopId').val())))",
+      ".indexOn": ["to"],
+      "$id": {
+        ".read": "auth != null && (data.child('to').val() == auth.uid || data.child('to').val() == root.child('users').child(auth.uid).child('shopId').val())",
+        ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true || !data.exists() || data.child('to').val() == auth.uid || data.child('to').val() == root.child('users').child(auth.uid).child('shopId').val())"
+      }
+    },
+
+    "carts": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid",
+        ".write": "auth != null && auth.uid == $uid"
+      }
+    },
+
+    "settings": {
+      ".read": "auth != null",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      "allowShopSignup": {
+        ".read": true
+      }
+    },
+
+    "audit": {
+      ".read": "auth != null && root.child('admins').child(auth.uid).val() === true",
+      ".write": "auth != null && root.child('admins').child(auth.uid).val() === true"
+    }
+  }
+}
